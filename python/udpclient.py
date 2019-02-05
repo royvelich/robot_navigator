@@ -114,7 +114,8 @@ def kbd():
         cmd=sys.stdin.readline().strip()
     cmd=''
     global done
-    done=True
+    done = True
+    Alex
 
 
 class Planner:
