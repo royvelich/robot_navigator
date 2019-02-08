@@ -119,69 +119,77 @@ def kbd():
 
 class Planner:
     def __init__(self, cm_per_unit, grid_size_cm):
-        self.cm_per_unit = cm_per_unit
-        self.grid_size_cm = grid_size_cm
-        self.grid_size = int(self.grid_size_cm / self.cm_per_unit)
-        self.grid_width = self.grid_size
-        self.grid_height = self.grid_size
-        self.center_grid_x = int(self.grid_size / 2)
-        self.center_grid_y = int(self.grid_size / 2)
-        self.obstacle_grid = numpy.zeros((self.grid_width, self.grid_height))
+        # self.attraction_factor = 0.1
+        # self.repulsion_factor = 60
+
+        self.attraction_factor = 0.1
+        self.repulsion_factor = 60
+
+        # self.cm_per_unit = cm_per_unit
+        # self.grid_size_cm = grid_size_cm
+        # self.grid_size = int(self.grid_size_cm / self.cm_per_unit)
+        # self.grid_width = self.grid_size
+        # self.grid_height = self.grid_size
+        # self.center_grid_x = int(self.grid_size / 2)
+        # self.center_grid_y = int(self.grid_size / 2)
+        # self.obstacle_grid = numpy.zeros((self.grid_width, self.grid_height))
         self.rclient = RClient("192.168.1.152", 2777)
         self.connected = False
         if self.rclient.connect():
             self.connected = True
-            self.state = 'idle'
+            self.state = 'forward'
             time.sleep(1)
 
 
-    def in_bounds(self, x, y, grid_width, grid_height):
-        return x >= 0 and x < grid_width and y >= 0 and y < grid_height
-
-
-    def is_clear(self, x, y, grid_width, grid_height):
-        if self.in_bounds(x, y, grid_width, grid_height):
-            return self.grid[x][y] == 0
-        return False
-
-
-    def set_if_clear(self, x, y, grid_width, grid_height, value, q):
-        if self.is_clear(x, y, grid_width, grid_height):
-            self.grid[x][y] = value
-            q.put((x, y, value))
-
-
-    def populate_grid(self, grid_goal_x, grid_goal_y):
-        self.grid = numpy.copy(self.obstacle_grid)
-        q = Queue.Queue()
-        if self.is_clear(grid_goal_x, grid_goal_y, self.grid_width, self.grid_height):
-            self.grid[grid_goal_x][grid_goal_y] = 2;
-            q.put((grid_goal_x, grid_goal_y, 2))
-            while not q.empty():
-                (x_grid, y_grid, value) = q.get()
-                value = value + 1
-                self.set_if_clear(x_grid + 1, y_grid, self.grid_width, self.grid_height, value, q)
-                self.set_if_clear(x_grid, y_grid + 1, self.grid_width, self.grid_height, value, q)
-                self.set_if_clear(x_grid - 1, y_grid, self.grid_width, self.grid_height, value, q)
-                self.set_if_clear(x_grid, y_grid - 1, self.grid_width, self.grid_height, value, q)
-
-
-    def get_cell_helper(self, world_units, grid_units):
-        return int(world_units / self.cm_per_unit + grid_units)
-
-
-    def get_cell(self, x_world, y_world):
-        return self.get_cell_helper(x_world, self.center_grid_x), self.get_cell_helper(y_world, self.center_grid_y)
-
-
-    def travelable_cell(self, x_grid, y_grid, grid_value):
-        return self.in_bounds(x_grid, y_grid, self.grid_size, self.grid_size) and self.grid[x_grid, y_grid] < grid_value
+    # def in_bounds(self, x, y, grid_width, grid_height):
+    #     return x >= 0 and x < grid_width and y >= 0 and y < grid_height
+    #
+    #
+    # def is_clear(self, x, y, grid_width, grid_height):
+    #     if self.in_bounds(x, y, grid_width, grid_height):
+    #         return self.grid[x][y] == 0
+    #     return False
+    #
+    #
+    # def set_if_clear(self, x, y, grid_width, grid_height, value, q):
+    #     if self.is_clear(x, y, grid_width, grid_height):
+    #         self.grid[x][y] = value
+    #         q.put((x, y, value))
+    #
+    #
+    # def populate_grid(self, grid_goal_x, grid_goal_y):
+    #     self.grid = numpy.copy(self.obstacle_grid)
+    #     q = Queue.Queue()
+    #     if self.is_clear(grid_goal_x, grid_goal_y, self.grid_width, self.grid_height):
+    #         self.grid[grid_goal_x][grid_goal_y] = 2;
+    #         q.put((grid_goal_x, grid_goal_y, 2))
+    #         while not q.empty():
+    #             (x_grid, y_grid, value) = q.get()
+    #             value = value + 1
+    #             self.set_if_clear(x_grid + 1, y_grid, self.grid_width, self.grid_height, value, q)
+    #             self.set_if_clear(x_grid, y_grid + 1, self.grid_width, self.grid_height, value, q)
+    #             self.set_if_clear(x_grid - 1, y_grid, self.grid_width, self.grid_height, value, q)
+    #             self.set_if_clear(x_grid, y_grid - 1, self.grid_width, self.grid_height, value, q)
+    #
+    #
+    # def get_cell_helper(self, world_units, grid_units):
+    #     return int(world_units / self.cm_per_unit + grid_units)
+    #
+    #
+    # def get_cell(self, x_world, y_world):
+    #     return self.get_cell_helper(x_world, self.center_grid_x), self.get_cell_helper(y_world, self.center_grid_y)
+    #
+    #
+    # def travelable_cell(self, x_grid, y_grid, grid_value):
+    #     return self.in_bounds(x_grid, y_grid, self.grid_size, self.grid_size) and self.grid[x_grid, y_grid] < grid_value
 
 
     def plan(self):
-        while self.state is not 'done':
+        while True:
             data = self.rclient.sense()
-            # print data
+            print data
+
+            # print "grid position: (" + str(self.grid_x) + ", " + str(self.grid_y) + ") [grid center: (" + str(self.center_grid_x) + ", " + str(self.center_grid_y) + ")]"
 
             world_x = data[0]
             world_y = data[1]
@@ -189,72 +197,136 @@ class Planner:
             world_dir_x = data[2]
             world_dir_y = data[3]
 
-            (grid_x, grid_y) = self.get_cell(world_x, world_y)
+            # right
+            world_right_obst = data[4]
 
-            print "grid position: (" + str(grid_x) + ", " + str(grid_y) + ") [grid center: (" + str(self.center_grid_x) + ", " + str(self.center_grid_y) + ")]"
+            # center
+            world_center_obst = data[5]
+
+            #left
+            world_left_obst = data[6]
 
 
-            if abs(grid_x - self.grid_goal_x) < 3 and abs(grid_y - self.grid_goal_y) < 3:
-                self.state = 'done'
+            # print "Obstacles: " + str((world_right_obst, world_center_obst, world_left_obst))
 
-            if grid_x >= 0 and grid_y >= 0:
-                grid_value = self.grid[grid_x, grid_y]
+            obst_list = [world_right_obst, world_center_obst, world_left_obst]
 
-                if self.state == 'idle':
-                    movement_dir = numpy.array([0, 0])
-                    if self.travelable_cell(grid_x + 1, grid_y, grid_value):
-                        movement_dir = numpy.array([1, 0])
-                    elif self.travelable_cell(grid_x - 1, grid_y, grid_value):
-                        movement_dir = numpy.array([-1, 0])
-                    elif self.travelable_cell(grid_x, grid_y + 1, grid_value):
-                        movement_dir = numpy.array([0, 1])
-                    elif self.travelable_cell(grid_x, grid_y - 1, grid_value):
-                        movement_dir = numpy.array([0, -1])
+            theta = numpy.degrees(-45)
+            c, s = numpy.cos(theta), numpy.sin(theta)
+            R_ccw = numpy.array(((c, -s), (s, c)))
 
-                robot_dir = numpy.array([world_dir_x, world_dir_y])
+            theta = numpy.degrees(45)
+            c, s = numpy.cos(theta), numpy.sin(theta)
+            R_cw = numpy.array(((c, -s), (s, c)))
 
-                # movement_dir = numpy.array([1, 0])
+            robot_dir = numpy.array([world_dir_x, world_dir_y])
 
-                dot = numpy.dot(movement_dir, robot_dir)
-                cross = numpy.cross(movement_dir, robot_dir)
+            center_dir = robot_dir
+            left_dir = numpy.matmul(R_ccw, robot_dir)
+            right_dir = numpy.matmul(R_cw, robot_dir)
 
-                if dot < 0.98 and self.state == 'idle':
-                    if cross > 0:
-                        self.state = 'cw'
-                    else:
-                        self.state = 'ccw'
+            dir_list = [right_dir, center_dir, left_dir]
+
+            # min_obst = min(obst_list)
+            max_obst = max(obst_list)
+            min_obst = max_obst
+
+            if max_obst < 0:
+                closest_obst_dir = numpy.array([0, 0])
+            else:
+                for i in range(0, 3):
+                    current_obst = obst_list[i]
+                    print i
+                    if current_obst < min_obst and current_obst > 0:
+                        min_obst = current_obst
+                min_obst_index = obst_list.index(min_obst)
+                closest_obst_dir = dir_list[min_obst_index]
+
+                print min_obst
+                print min_obst_index
+
+            goal_pos = numpy.array([self.goal_x, self.goal_y])
+
+            robot_pos = numpy.array([world_x, world_y])
+
+            goal_dir = goal_pos - robot_pos
+
+            if numpy.linalg.norm(goal_dir) < 15:
+                break
+
+            attraction_vec = self.attraction_factor * (goal_dir / numpy.linalg.norm(goal_dir))
+
+            repulsion_force = self.repulsion_factor / pow(float(min_obst) / 100.0, 2)
+
+            if max_obst > 0:
+                repulsion_vec = repulsion_force * (closest_obst_dir / numpy.linalg.norm(closest_obst_dir))
+            else:
+                repulsion_vec = numpy.array([0, 0])
+
+            movement_dir = attraction_vec - repulsion_vec
+            movement_dir_norm = movement_dir / numpy.linalg.norm(movement_dir)
+
+            # print movement_dir_norm
+
+            dot = numpy.dot(movement_dir_norm, robot_dir)
+            cross = numpy.cross(movement_dir_norm, robot_dir)
+
+
+
+            collision = True
+            if world_right_obst < 0 and world_center_obst < 0 and world_left_obst < 0:
+                collision = False
+
+            # if dot < 0.9 and collision:
+            #     if cross > 0:
+            #         self.state = 'cw'
+            #     else:
+            #         self.state = 'ccw'
+            # else:
+            #     self.state = 'forward'
+
+            rotation_speed = 300
+            forward_speed = 300
+
+            # if self.state == 'cw':
+            #     self.speed_right = rot_speed
+            #     self.speed_left = -350
+            # elif self.state == 'ccw':
+            #     self.speed_right = 0
+            #     self.speed_left = rot_speed
+            # elif self.state == 'forward':
+
+            # print abs(dot)
+
+            if dot > 0.9:
+                self.speed_right = forward_speed
+                self.speed_left = forward_speed
+            else:
+                if cross > 0:
+                    self.speed_right = rotation_speed
+                    self.speed_left = 0
                 else:
-                    self.state = 'idle'
+                    self.speed_right = 0
+                    self.speed_left = rotation_speed
 
-                speed = 400
-                rot_speed = 400
-
-                if self.state == 'cw':
-                    self.speed_right = rot_speed
-                    self.speed_left = -rot_speed
-                elif self.state == 'ccw':
-                    self.speed_right = -rot_speed
-                    self.speed_left = rot_speed
-                elif self.state == 'idle':
-                    self.speed_right = speed
-                    self.speed_left = speed
-
-                self.rclient.drive(self.speed_left, self.speed_right)
-                time.sleep(0.08)
+            self.rclient.drive(self.speed_left, self.speed_right)
+            time.sleep(0.1)
 
         self.rclient.terminate()
 
-    def drive(self):
-        while not self.state is 'done':
-            self.rclient.drive(self.speed_left, self.speed_right)
-            time.sleep(0.2)
+    # def drive(self):
+    #     while not self.state is 'done':
+    #         self.rclient.drive(self.speed_left, self.speed_right)
+    #         time.sleep(0.2)
 
 
     def go(self, goal_x, goal_y):
         # (grid_goal_x, grid_goal_y) = self.get_cell(goal_x, goal_y)
-        self.grid_goal_x = goal_x
-        self.grid_goal_y = goal_y
-        self.populate_grid(self.grid_goal_x, self.grid_goal_y)
+        self.goal_x = goal_x
+        self.goal_y = goal_y
+        # self.grid_goal_x = goal_x
+        # self.grid_goal_y = goal_y
+        # self.populate_grid(self.grid_goal_x, self.grid_goal_y)
         self.plan()
 
         # self.plan_thread = threading.Thread(target=self.plan)
@@ -265,6 +337,6 @@ class Planner:
 
 
 if __name__=='__main__':
-    planner = Planner(cm_per_unit=4, grid_size_cm=400)
-    planner.go(78, 33)
+    planner = Planner(cm_per_unit=20, grid_size_cm=400)
+    planner.go(0, 0)
 
