@@ -11,23 +11,25 @@ import Queue
 import random
 from errnames import get_error_name
 
+
 def get_ip():
     from netifaces import interfaces, ifaddresses, AF_INET
     for interface in interfaces():
         try:
             for link in ifaddresses(interface)[AF_INET]:
-                ip=str(link['addr'])
+                ip = str(link['addr'])
                 if ip.startswith('192.168.1.'):
                     return ip
         except KeyError:
             pass
     return '127.0.0.1'
 
+
 class RClient(object):
     """ 
     Robot python interface class
     Typical usage involves:
-        
+
         r=RClient("192.168.1.151",2777)
         if not r.connect(): print error and exit
         while main_loop:
@@ -35,51 +37,52 @@ class RClient(object):
             sensors=r.sense()
             some_calculations()
         r.terminate()
-        
+
     """
-    def __init__(self,host,port,user_deprecate='',id_deprecate=''):
+
+    def __init__(self, host, port, user_deprecate='', id_deprecate=''):
         self.ip = get_ip()
-        #self.ip = '127.0.0.1'
-        self.robot=(host,port)
-        self.lock=threading.RLock()
-        self.done=False
-        self.sensors=[0.0,0.0,0.0,0.0,0.0]
-        
+        # self.ip = '127.0.0.1'
+        self.robot = (host, port)
+        self.lock = threading.RLock()
+        self.done = False
+        self.sensors = [0.0, 0.0, 0.0, 0.0, 0.0]
+
     def connect(self):
         """ Connect to server and create processing thread """
         try:
-            self.recv_thread=threading.Thread(target=self.recv_loop)
+            self.recv_thread = threading.Thread(target=self.recv_loop)
             self.recv_thread.start()
             return True
-        except socket.error,e:
-            reason=get_error_name(e[0])
-            print "Socket Error: "+reason
+        except socket.error, e:
+            reason = get_error_name(e[0])
+            print "Socket Error: " + reason
         return False
-            
+
     def recv_loop(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.bind((self.ip,9209))
+        sock.bind((self.ip, 9209))
         sock.setblocking(0)
         while not self.done:
             try:
                 data, addr = sock.recvfrom(256)
-                if len(data)==0:
+                if len(data) == 0:
                     time.sleep(0.05)
                 else:
                     # print "Received from '{}' data='{}'".format(addr,data)
                     try:
-                        self.sensors=[float(s) for s in data.split()]
+                        self.sensors = [float(s) for s in data.split()]
                     except ValueError:
                         pass
-            except socket.error,e:
+            except socket.error, e:
                 # errnum=e[0]
                 # if errnum!=errno.EAGAIN:
                 #     reason=get_error_name(errnum)
                 #     print "Socket Error ({}): {}".format(errnum,reason)
-                # time.sleep(0.05)
+                time.sleep(0.05)
                 y = 6
-            
-    def sendmsg(self,msg):
+
+    def sendmsg(self, msg):
         with self.lock:
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -87,16 +90,16 @@ class RClient(object):
                 return True
             except socket.error:
                 return False
-            
+
     def terminate(self):
         """ Call before your program ends, for a clean exit """
-        self.done=True
+        self.done = True
         self.recv_thread.join()
-        
-    def drive(self,left,right):
+
+    def drive(self, left, right):
         """ Make the robot move.  Send 2 integers for motors [-1000 : 1000] """
-        self.sendmsg("{} {}".format(left,right))
-        
+        self.sendmsg("{} {}".format(left, right))
+
     def sense(self):
         """ Get a list of sensor readings.  5 floating point values:  X,Y, 3 sonars """
         return self.sensors
@@ -106,24 +109,27 @@ class RClient(object):
 #  Following code is a simple test main that allows to control the robot
 #  from the keyboard, and see raw sersor readings on the screen
 #
-done=False
-cmd=''
+done = False
+cmd = ''
+
 
 def kbd():
     global cmd
-    while cmd!='q':
-        cmd=sys.stdin.readline().strip()
-    cmd=''
+    while cmd != 'q':
+        cmd = sys.stdin.readline().strip()
+    cmd = ''
     global done
-    done=True
+    done = True
 
 
 class Planner:
     def __init__(self, cm_per_unit, grid_size_cm):
-        self.attraction_factor = 350
-        self.repulsion_factor = 90
+        self.orig_attraction_factor = 600
+        self.attraction_factor = self.orig_attraction_factor
+        self.repulsion_factor = 300
         self.rclient = RClient("192.168.1.152", 2777)
         self.connected = False
+        self.counter = 0
         if self.rclient.connect():
             self.connected = True
             self.state = 'forward'
@@ -139,6 +145,20 @@ class Planner:
             world_x = data[0]
             world_y = data[1]
 
+            # if (world_x < -9000 or world_y < -9000) and self.counter < 3:
+            #     self.counter = self.counter + 1
+            #     time.sleep(0.2)
+            #     continue
+            # else:
+            #     while world_x < -9000 or world_y < -9000:
+            #         self.rclient.drive(-350, -350)
+            #         data = self.rclient.sense()
+            #         print data
+            #         world_x = data[0]
+            #         world_y = data[1]
+            #         time.sleep(0.1)
+            #         self.counter = 0
+
             world_dir_x = data[2]
             world_dir_y = data[3]
 
@@ -148,9 +168,8 @@ class Planner:
             # center
             world_center_obst = data[5]
 
-            #left
+            # left
             world_left_obst = data[6]
-
 
             # print "Obstacles: " + str((world_right_obst, world_center_obst, world_left_obst))
 
@@ -203,7 +222,6 @@ class Planner:
                 #
                 # closest_obst_dir = closest_obst_dir / 2
 
-
                 min_obst_index = obst_list.index(min_obst)
 
                 if min_obst_index == 1:
@@ -218,6 +236,7 @@ class Planner:
                             min_obst_index = 2
 
                 closest_obst_dir = dir_list[min_obst_index]
+                closest_obst_dist = obst_list[min_obst_index]
 
                 # print min_obst
                 # print min_obst_index
@@ -227,6 +246,13 @@ class Planner:
             robot_pos = numpy.array([world_x, world_y])
 
             goal_dir = goal_pos - robot_pos
+
+
+
+            if numpy.linalg.norm(goal_dir) < 60:
+                self.attraction_factor = 3000
+            else:
+                self.attraction_factor = self.orig_attraction_factor
 
             if numpy.linalg.norm(goal_dir) < 15:
                 break
@@ -246,17 +272,24 @@ class Planner:
             dot = numpy.dot(movement_dir_norm, robot_dir)
             cross = numpy.cross(movement_dir_norm, robot_dir)
 
-            speed = 330
+            speed = 350
+
+            # if numpy.linalg.norm(goal_dir) < 60:
+            #     speed = 400
+            #
+            # if numpy.linalg.norm(goal_dir) < 20:
+            #     speed = 500
+
             # forward_speed = 350
 
             back_speed = 0
 
-            if max_obst > 0 and min_obst < 38:
+            if max_obst > 0 and min_obst < 25:
                 back_speed = -speed
 
-            if dot > 0.9:
-                self.speed_right = speed
-                self.speed_left = speed
+            if dot > 0.92:
+                self.speed_right = 280
+                self.speed_left = 280
             else:
                 if cross > 0:
                     self.speed_right = speed
@@ -266,7 +299,7 @@ class Planner:
                     self.speed_left = speed
 
             self.rclient.drive(self.speed_left, self.speed_right)
-            # time.sleep(0.2)
+            time.sleep(0.25)
 
         self.rclient.terminate()
 
@@ -275,8 +308,8 @@ class Planner:
         self.goal_y = goal_y
         self.plan()
 
-if __name__=='__main__':
-    planner = Planner(cm_per_unit=20, grid_size_cm=400)
-    planner.go(0, 0)
-    # planner.go(114, -62)
 
+if __name__ == '__main__':
+    planner = Planner(cm_per_unit=20, grid_size_cm=400)
+    # planner.go(0, 0)
+    planner.go(114, -62)
