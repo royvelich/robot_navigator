@@ -288,8 +288,8 @@ class Planner:
                 back_speed = -speed
 
             if dot > 0.92:
-                self.speed_right = 280
-                self.speed_left = 280
+                self.speed_right = 310
+                self.speed_left = 310
             else:
                 if cross > 0:
                     self.speed_right = speed
@@ -311,5 +311,5 @@ class Planner:
 
 if __name__ == '__main__':
     planner = Planner(cm_per_unit=20, grid_size_cm=400)
-    # planner.go(0, 0)
-    planner.go(114, -62)
+    planner.go(0, 0)
+    # planner.go(114, -62)
