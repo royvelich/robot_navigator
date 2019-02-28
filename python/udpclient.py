@@ -126,8 +126,8 @@ class Planner:
     def __init__(self, cm_per_unit, grid_size_cm):
         self.orig_attraction_factor = 600
         self.attraction_factor = self.orig_attraction_factor
-        self.repulsion_factor = 300
-        self.rclient = RClient("192.168.1.152", 2777)
+        self.repulsion_factor = 600
+        self.rclient = RClient("192.168.1.153", 2777)
         self.connected = False
         self.counter = 0
         if self.rclient.connect():
@@ -150,14 +150,14 @@ class Planner:
             #     time.sleep(0.2)
             #     continue
             # else:
-            #     while world_x < -9000 or world_y < -9000:
-            #         self.rclient.drive(-350, -350)
-            #         data = self.rclient.sense()
-            #         print data
-            #         world_x = data[0]
-            #         world_y = data[1]
-            #         time.sleep(0.1)
-            #         self.counter = 0
+            while world_x < -9000 or world_y < -9000:
+                self.rclient.drive(-310, -310)
+                data = self.rclient.sense()
+                print data
+                world_x = data[0]
+                world_y = data[1]
+                time.sleep(0.2)
+                # self.counter = 0
 
             world_dir_x = data[2]
             world_dir_y = data[3]
@@ -170,8 +170,6 @@ class Planner:
 
             # left
             world_left_obst = data[6]
-
-            # print "Obstacles: " + str((world_right_obst, world_center_obst, world_left_obst))
 
             obst_list = [world_right_obst, world_center_obst, world_left_obst]
 
@@ -272,7 +270,7 @@ class Planner:
             dot = numpy.dot(movement_dir_norm, robot_dir)
             cross = numpy.cross(movement_dir_norm, robot_dir)
 
-            speed = 350
+            speed = 280
 
             # if numpy.linalg.norm(goal_dir) < 60:
             #     speed = 400
@@ -287,19 +285,19 @@ class Planner:
             if max_obst > 0 and min_obst < 25:
                 back_speed = -speed
 
-            if dot > 0.92:
-                self.speed_right = 310
-                self.speed_left = 310
+            if dot > 0.94:
+                self.speed_right = speed
+                self.speed_left = speed
             else:
                 if cross > 0:
-                    self.speed_right = speed
+                    self.speed_right = 330
                     self.speed_left = back_speed
                 else:
                     self.speed_right = back_speed
-                    self.speed_left = speed
+                    self.speed_left = 330
 
             self.rclient.drive(self.speed_left, self.speed_right)
-            time.sleep(0.25)
+            time.sleep(0.22)
 
         self.rclient.terminate()
 
