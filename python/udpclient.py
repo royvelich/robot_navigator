@@ -124,10 +124,11 @@ def kbd():
 
 class Planner:
     def __init__(self, cm_per_unit, grid_size_cm):
-        self.orig_attraction_factor = 600
+        self.orig_attraction_factor = 1000
         self.attraction_factor = self.orig_attraction_factor
-        self.repulsion_factor = 600
-        self.rclient = RClient("192.168.1.153", 2777)
+        self.orig_repulsion_factor = 350
+        self.repulsion_factor = self.orig_repulsion_factor
+        self.rclient = RClient("192.168.1.157", 2777)
         self.connected = False
         self.counter = 0
         if self.rclient.connect():
@@ -140,16 +141,9 @@ class Planner:
             data = self.rclient.sense()
             print data
 
-            # print "grid position: (" + str(self.grid_x) + ", " + str(self.grid_y) + ") [grid center: (" + str(self.center_grid_x) + ", " + str(self.center_grid_y) + ")]"
-
             world_x = data[0]
             world_y = data[1]
 
-            # if (world_x < -9000 or world_y < -9000) and self.counter < 3:
-            #     self.counter = self.counter + 1
-            #     time.sleep(0.2)
-            #     continue
-            # else:
             while world_x < -9000 or world_y < -9000:
                 self.rclient.drive(-310, -310)
                 data = self.rclient.sense()
@@ -157,7 +151,6 @@ class Planner:
                 world_x = data[0]
                 world_y = data[1]
                 time.sleep(0.2)
-                # self.counter = 0
 
             world_dir_x = data[2]
             world_dir_y = data[3]
@@ -181,13 +174,7 @@ class Planner:
             c, s = numpy.cos(theta), numpy.sin(theta)
             R_cw = numpy.array(((c, -s), (s, c)))
 
-            random_int = random.randint(0, 9)
-
-            center_angle = 5
-            if random_int % 2 == 0:
-                center_angle = -center_angle
-
-            theta = numpy.degrees(5)
+            theta = numpy.degrees(10)
             c, s = numpy.cos(theta), numpy.sin(theta)
             R_bias = numpy.array(((c, -s), (s, c)))
 
@@ -204,21 +191,15 @@ class Planner:
             max_obst = max(obst_list)
             min_obst = max_obst
 
+            front = False
+
             if max_obst < 0:
                 closest_obst_dir = numpy.array([0, 0])
             else:
                 for i in range(0, 3):
                     current_obst = obst_list[i]
-                    # print i
                     if current_obst < min_obst and current_obst > 0:
                         min_obst = current_obst
-
-                # closest_obst_dir = numpy.array([0, 0])
-                # for i in range(0, 3):
-                #     if obst_list[i] == min_obst:
-                #         closest_obst_dir = closest_obst_dir + dir_list[i]
-                #
-                # closest_obst_dir = closest_obst_dir / 2
 
                 min_obst_index = obst_list.index(min_obst)
 
@@ -232,23 +213,23 @@ class Planner:
                             min_obst_index = 0
                         elif obst_list[2] < obst_list[0]:
                             min_obst_index = 2
+                    else:
+                        front = True
 
                 closest_obst_dir = dir_list[min_obst_index]
                 closest_obst_dist = obst_list[min_obst_index]
 
-                # print min_obst
-                # print min_obst_index
+                if closest_obst_dist < 40:
+                    self.repulsion_factor = 3000
+                else:
+                    self.repulsion_factor = self.orig_repulsion_factor
 
             goal_pos = numpy.array([self.goal_x, self.goal_y])
-
             robot_pos = numpy.array([world_x, world_y])
-
             goal_dir = goal_pos - robot_pos
 
-
-
-            if numpy.linalg.norm(goal_dir) < 60:
-                self.attraction_factor = 3000
+            if numpy.linalg.norm(goal_dir) < 80:
+                self.attraction_factor = 4000
             else:
                 self.attraction_factor = self.orig_attraction_factor
 
@@ -256,7 +237,6 @@ class Planner:
                 break
 
             attraction_vec = self.attraction_factor * (goal_dir / numpy.linalg.norm(goal_dir))
-
             repulsion_force = self.repulsion_factor / pow(float(min_obst) / 100.0, 2)
 
             if max_obst > 0:
@@ -270,44 +250,50 @@ class Planner:
             dot = numpy.dot(movement_dir_norm, robot_dir)
             cross = numpy.cross(movement_dir_norm, robot_dir)
 
-            speed = 280
+            forward_speed = 270
+            backward_rot_speed = 0
+            forward_rot_speed = 350
 
-            # if numpy.linalg.norm(goal_dir) < 60:
-            #     speed = 400
-            #
-            # if numpy.linalg.norm(goal_dir) < 20:
-            #     speed = 500
-
-            # forward_speed = 350
-
-            back_speed = 0
-
-            if max_obst > 0 and min_obst < 25:
-                back_speed = -speed
+            # if front is True and min_obst < 16:
+            #     while world_right_obst < 0 and world_left_obst < 0:
+            #         data = self.rclient.sense()
+            #         print data
+            #         world_right_obst = data[4]
+            #         world_center_obst = data[5]
+            #         world_left_obst = data[6]
+            #         self.rclient.drive(-310, 310)
+            # else:
+            if max_obst > 0 and min_obst < 24:
+                backward_rot_speed = -(forward_rot_speed - 60)
 
             if dot > 0.94:
-                self.speed_right = speed
-                self.speed_left = speed
+                self.speed_right = forward_speed
+                self.speed_left = forward_speed
             else:
                 if cross > 0:
-                    self.speed_right = 330
-                    self.speed_left = back_speed
+                    self.speed_right = forward_rot_speed
+                    self.speed_left = backward_rot_speed
                 else:
-                    self.speed_right = back_speed
-                    self.speed_left = 330
+                    self.speed_right = backward_rot_speed
+                    self.speed_left = forward_rot_speed
 
             self.rclient.drive(self.speed_left, self.speed_right)
-            time.sleep(0.22)
+            time.sleep(0.24)
 
-        self.rclient.terminate()
+        # self.rclient.terminate()
 
     def go(self, goal_x, goal_y):
         self.goal_x = goal_x
         self.goal_y = goal_y
         self.plan()
 
+    def end(self):
+        self.rclient.terminate()
+
 
 if __name__ == '__main__':
     planner = Planner(cm_per_unit=20, grid_size_cm=400)
-    planner.go(0, 0)
-    # planner.go(114, -62)
+    for i in range(1,10):
+        planner.go(0, 0)
+        planner.go(114, -62)
+        # planner.go(-129, -156)
