@@ -124,11 +124,11 @@ def kbd():
 
 class Planner:
     def __init__(self, cm_per_unit, grid_size_cm):
-        self.orig_attraction_factor = 2000
+        self.orig_attraction_factor = 4000
         self.attraction_factor = self.orig_attraction_factor
         self.orig_repulsion_factor = 350
         self.repulsion_factor = self.orig_repulsion_factor
-        self.rclient = RClient("192.168.1.157", 2777)
+        self.rclient = RClient("192.168.1.153", 2777)
         self.connected = False
         self.counter = 0
         if self.rclient.connect():
@@ -220,7 +220,7 @@ class Planner:
                 closest_obst_dist = obst_list[min_obst_index]
 
                 if closest_obst_dist < 40:
-                    self.repulsion_factor = 5000
+                    self.repulsion_factor = 7000
                 else:
                     self.repulsion_factor = self.orig_repulsion_factor
 
@@ -250,7 +250,7 @@ class Planner:
             dot = numpy.dot(movement_dir_norm, robot_dir)
             cross = numpy.cross(movement_dir_norm, robot_dir)
 
-            forward_speed = 260
+            forward_speed = 280
             backward_rot_speed = 0
             forward_rot_speed = 350
 
@@ -263,13 +263,15 @@ class Planner:
             #         world_left_obst = data[6]
             #         self.rclient.drive(-310, 310)
             # else:
-            if max_obst > 0 and min_obst < 34:
-                backward_rot_speed = -(forward_rot_speed - 70)
 
-            if dot > 0.94:
+
+            if dot > 0.94 and ((max_obst > 0 and min_obst > 50) or (max_obst < 0)):
                 self.speed_right = forward_speed
                 self.speed_left = forward_speed
             else:
+                if max_obst > 0 and min_obst < 40:
+                    backward_rot_speed = -(forward_rot_speed - 70)
+
                 if cross > 0:
                     self.speed_right = forward_rot_speed
                     self.speed_left = backward_rot_speed
