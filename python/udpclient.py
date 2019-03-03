@@ -124,7 +124,7 @@ def kbd():
 
 class Planner:
     def __init__(self, cm_per_unit, grid_size_cm):
-        self.orig_attraction_factor = 1000
+        self.orig_attraction_factor = 2000
         self.attraction_factor = self.orig_attraction_factor
         self.orig_repulsion_factor = 350
         self.repulsion_factor = self.orig_repulsion_factor
@@ -174,7 +174,7 @@ class Planner:
             c, s = numpy.cos(theta), numpy.sin(theta)
             R_cw = numpy.array(((c, -s), (s, c)))
 
-            theta = numpy.degrees(10)
+            theta = numpy.degrees(45)
             c, s = numpy.cos(theta), numpy.sin(theta)
             R_bias = numpy.array(((c, -s), (s, c)))
 
@@ -220,7 +220,7 @@ class Planner:
                 closest_obst_dist = obst_list[min_obst_index]
 
                 if closest_obst_dist < 40:
-                    self.repulsion_factor = 3000
+                    self.repulsion_factor = 5000
                 else:
                     self.repulsion_factor = self.orig_repulsion_factor
 
@@ -228,10 +228,10 @@ class Planner:
             robot_pos = numpy.array([world_x, world_y])
             goal_dir = goal_pos - robot_pos
 
-            if numpy.linalg.norm(goal_dir) < 80:
-                self.attraction_factor = 4000
-            else:
-                self.attraction_factor = self.orig_attraction_factor
+            # if numpy.linalg.norm(goal_dir) < 80:
+            #     self.attraction_factor = 4000
+            # else:
+            #     self.attraction_factor = self.orig_attraction_factor
 
             if numpy.linalg.norm(goal_dir) < 15:
                 break
@@ -250,7 +250,7 @@ class Planner:
             dot = numpy.dot(movement_dir_norm, robot_dir)
             cross = numpy.cross(movement_dir_norm, robot_dir)
 
-            forward_speed = 270
+            forward_speed = 260
             backward_rot_speed = 0
             forward_rot_speed = 350
 
@@ -263,8 +263,8 @@ class Planner:
             #         world_left_obst = data[6]
             #         self.rclient.drive(-310, 310)
             # else:
-            if max_obst > 0 and min_obst < 24:
-                backward_rot_speed = -(forward_rot_speed - 60)
+            if max_obst > 0 and min_obst < 34:
+                backward_rot_speed = -(forward_rot_speed - 70)
 
             if dot > 0.94:
                 self.speed_right = forward_speed
@@ -279,8 +279,6 @@ class Planner:
 
             self.rclient.drive(self.speed_left, self.speed_right)
             time.sleep(0.24)
-
-        # self.rclient.terminate()
 
     def go(self, goal_x, goal_y):
         self.goal_x = goal_x
@@ -297,3 +295,4 @@ if __name__ == '__main__':
         planner.go(0, 0)
         planner.go(114, -62)
         # planner.go(-129, -156)
+    planner.end()
